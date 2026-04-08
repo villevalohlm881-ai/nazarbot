@@ -1,31 +1,51 @@
-import os
 import telebot
-import requests
+from datetime import datetime, timedelta
+import pytz
 from flask import Flask
-from threading import Thread
+import threading
+import os
 
-TELEGRAM_TOKEN = "8295287160:AAE9rfnel80CPLKMKK3fhQe0hd3NxIV3T4U"
-bot = telebot.TeleBot(TELEGRAM_TOKEN)
+API_TOKEN = '7098418043:AAGU6F4iL7iX82y8uXj0F4Uf_Uv6G5v_hS8'
+bot = telebot.TeleBot(API_TOKEN)
+
 app = Flask(__name__)
 
 @app.route('/')
-def home():
-    return "Nazar is Online!"
+def index():
+    return "Nazar Bot is Running"
 
-def run():
-    app.run(host='0.0.0.0', port=os.environ.get('PORT', 8080))
+def get_nazar_status():
+    saudi_tz = pytz.timezone('Asia/Riyadh')
+    now = datetime.now(saudi_tz)
+    target = now.replace(hour=9, minute=0, second=0, microsecond=0)
+    if now >= target:
+        target += timedelta(days=1)
+    diff = target - now
+    hours, remainder = divmod(diff.seconds, 3600)
+    minutes, _ = divmod(remainder, 60)
+    return hours, minutes
 
-@bot.message_handler(func=lambda message: True)
-def get_nazar(message):
-    if "نزار" in message.text or "مكان" in message.text:
-        try:
-            data = requests.get("https://rdonazar.com/api/v1/location").json()
-            loc_name = data['location']['name']
-            img_url = data['location']['image']
-            bot.send_photo(message.chat.id, img_url, caption=f"📍 نزار اليوم في: {loc_name}")
-        except:
-            bot.reply_to(message, "السيرفر معلق شوي، جربي بعد دقيقة!")
+@bot.message_handler(func=lambda m: m.text in ["نزار", "مكان نزار", "موقع نزار"])
+def send_nazar_info(message):
+    try:
+        hours, minutes = get_nazar_status()
+        map_url = "https://jeanropke.github.io/RDR2CollectorsMap/assets/images/nazar_location.png"
+        
+        caption = (
+            "📍 *موقع السيدة نزار الحالي:*\n"
+            "_(تحديث تلقائي من الخريطة العالمية)_\n\n"
+            f"⏳ *الوقت المتبقي لتغيير المكان:*\n"
+            f"*{hours}* ساعة و *{minutes}* دقيقة\n\n"
+            "🕒 يتغير الموقع يومياً الساعة *9:00 AM* بتوقيت السعودية."
+        )
+        bot.send_photo(message.chat.id, map_url, caption=caption, parse_mode="Markdown")
+    except Exception:
+        bot.reply_to(message, "⚠️ الخريطة قيد التحديث من المصدر، حاول مجدداً لاحقاً.")
+
+def run_server():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
 
 if __name__ == "__main__":
-    Thread(target=run).start()
+    threading.Thread(target=run_server).start()
     bot.polling(none_stop=True)
