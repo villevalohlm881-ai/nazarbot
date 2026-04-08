@@ -5,7 +5,6 @@ from flask import Flask
 import threading
 import os
 
-# التوكن الخاص بك (تم التأكد منه من صورك)
 API_TOKEN = '7098418043:AAGU6F4iL7iX82y8uXj0F4Uf_Uv6G5v_hS8'
 
 bot = telebot.TeleBot(API_TOKEN)
